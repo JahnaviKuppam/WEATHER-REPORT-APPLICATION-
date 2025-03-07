@@ -1,0 +1,127 @@
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.util.List;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.ArrayList;
+import java.sql.SQLException;
+
+public class WeatherApp extends JFrame {
+
+    private JTextField locationField;
+    private JComboBox<String> infoComboBox;
+    private JComboBox<String> unitComboBox;
+    private JTextArea weatherTextArea;
+    private JLabel timeLabel;
+    private List<String> history = new ArrayList<>();
+
+    public WeatherApp() {
+        setTitle("Weather Forecast App");
+        setSize(400, 400);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+        getContentPane().setBackground(new Color(0x3498db));
+
+        JPanel panel = new JPanel();
+        panel.setLayout(new GridLayout(7, 1, 10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        panel.setBackground(new Color(0x3498db));
+
+        JLabel locationLabel = new JLabel("Enter Location:");
+        locationField = new JTextField(20);
+
+        JLabel infoLabel = new JLabel("Select Info:");
+        String[] infoOptions = {"Temperature", "Humidity", "Wind Speed", "Pressure"};
+        infoComboBox = new JComboBox<>(infoOptions);
+
+        JLabel unitLabel = new JLabel("Select Unit:");
+        String[] unitOptions = {"Celsius", "Fahrenheit", "Meter/second", "Kilometer/hour"};
+        unitComboBox = new JComboBox<>(unitOptions);
+
+        JButton getWeatherButton = new JButton("Get Weather Info");
+        JButton historyButton = new JButton("History");
+
+        weatherTextArea = new JTextArea(10, 30);
+        weatherTextArea.setEditable(false);
+        JScrollPane scrollPane = new JScrollPane(weatherTextArea);
+
+        panel.add(locationLabel);
+        panel.add(locationField);
+        panel.add(infoLabel);
+        panel.add(infoComboBox);
+        panel.add(unitLabel);
+        panel.add(unitComboBox);
+        panel.add(getWeatherButton);
+        panel.add(historyButton);
+
+        add(panel, BorderLayout.NORTH);
+        add(scrollPane, BorderLayout.CENTER);
+
+        getWeatherButton.addActionListener(e -> fetchWeatherData());
+        historyButton.addActionListener(e -> new HistoryPage(history).setVisible(true));
+
+        updateTime();
+        Timer timer = new Timer(1000, e -> updateTime());
+        timer.start();
+    }
+
+    private void fetchWeatherData() {
+        String location = locationField.getText().trim();
+        if (!location.isEmpty()) {
+            String apiKey = "YOUR_API_KEY";
+            String apiUrl = "https://api.openweathermap.org/data/2.5/weather?q=" + location + "&appid=" + apiKey;
+            String weatherData = getWeatherData(apiUrl);
+            weatherTextArea.setText(weatherData);
+            history.add("Location: " + location);
+        } else {
+            weatherTextArea.setText("Please enter a valid location.");
+        }
+    }
+
+    private String getWeatherData(String apiUrl) {
+        try {
+            HttpURLConnection connection = (HttpURLConnection) new URL(apiUrl).openConnection();
+            connection.setRequestMethod("GET");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            StringBuilder response = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                response.append(line);
+            }
+            reader.close();
+            return response.toString();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Error fetching weather data.";
+        }
+    }
+
+    private void updateTime() {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        timeLabel = new JLabel("Current Date and Time: " + dateFormat.format(new Date()));
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new WeatherApp().setVisible(true));
+    }
+}
+
+class HistoryPage extends JFrame {
+    public HistoryPage(List<String> history) {
+        setTitle("Search History");
+        setSize(400, 400);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        JTextArea historyTextArea = new JTextArea(10, 30);
+        history.forEach(entry -> historyTextArea.append(entry + "\n"));
+        add(new JScrollPane(historyTextArea));
+    }
+}
